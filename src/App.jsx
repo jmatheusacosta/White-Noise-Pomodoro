@@ -90,6 +90,19 @@ export default function App() {
   const handleFinished = useCallback(() => setIsFinished(true), []);
 
   useEffect(() => {
+    if (isFinished) {
+      const timer = setTimeout(() => {
+        setModeId(prev => {
+          if (prev === 'focus') return 'shortBreak';
+          if (prev === 'shortBreak') return 'focus';
+          return prev;
+        });
+      }, 3500); // 3.5s delay to keep celebration visible
+      return () => clearTimeout(timer);
+    }
+  }, [isFinished]);
+
+  useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
