@@ -3,7 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 const SOUNDS = {
   estatico: { name: '📺 White Noise', url: '/sounds/white_noise.mp3' },
   chuva: { name: '🌧️ Rain', url: '/sounds/rain.mp3' },
-  vento: { name: '🌬️ Wind', url: '/sounds/wind.mp3' }
+  vento: { name: '🌬️ Wind', url: '/sounds/wind.mp3' },
+  binaural_beats: { name: '🧠 Binaural Beats', url: '/sounds/binauralbeats.mp3' }
 };
 
 export function WhiteNoiseControls({ globalStyles, isDark }) {
