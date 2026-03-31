@@ -87,7 +87,19 @@ export default function App() {
     modalSaveBtn: isDark ? 'bg-white text-black hover:bg-gray-100' : 'bg-gray-900 text-white hover:bg-black',
   };
 
-  const handleFinished = useCallback(() => setIsFinished(true), []);
+  const handleFinished = useCallback(() => {
+    setIsFinished(true);
+
+    const audio = new Audio('/sounds/notification.mp3');
+    audio.play().catch(e => console.warn('Notification sound failed:', e));
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Time is up! 🎉", {
+        body: "It's time to switch modes and focus on the next step.",
+        icon: '/favicon.svg'
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (isFinished) {
@@ -122,6 +134,17 @@ export default function App() {
   const switchMode = (id) => setModeId(id);
 
   const toggleTimer = () => {
+    // Solicita permissão para notificações na primeira interação do usuário com o timer
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    // Toca o som de início apenas se estivermos ligando o timer
+    if (!isActive) {
+      const audio = new Audio('/sounds/start.mp3');
+      audio.play().catch(e => console.warn('Start sound failed:', e));
+    }
+
     if (isFinished) {
       resetTimer();
       setIsActive(true);
@@ -169,42 +192,42 @@ export default function App() {
 
   return (
     <div className={`min-h-screen flex items-center justify-center transition-colors duration-700 ease-in-out ${currentMode.bg}`}>
-      
-      <TopBar 
-        settings={settings} 
-        toggleTheme={toggleTheme} 
-        setShowSettings={setShowSettings} 
-        globalStyles={globalStyles} 
+
+      <TopBar
+        settings={settings}
+        toggleTheme={toggleTheme}
+        setShowSettings={setShowSettings}
+        globalStyles={globalStyles}
       />
 
       <div className={`max-w-md w-full p-8 sm:p-10 backdrop-blur-lg rounded-3xl shadow-xl flex flex-col items-center border transition-colors duration-500 ${globalStyles.cardBg}`}>
-        
-        <ModeSelector 
-          modes={MODES} 
-          modeId={modeId} 
-          switchMode={switchMode} 
-          globalStyles={globalStyles} 
+
+        <ModeSelector
+          modes={MODES}
+          modeId={modeId}
+          switchMode={switchMode}
+          globalStyles={globalStyles}
         />
 
-        <TimerDisplay 
-          timeLeft={timeLeft} 
-          isFinished={isFinished} 
-          currentMode={currentMode} 
-          formatTime={formatTime} 
+        <TimerDisplay
+          timeLeft={timeLeft}
+          isFinished={isFinished}
+          currentMode={currentMode}
+          formatTime={formatTime}
         />
 
-        <TimerControls 
-          isActive={isActive} 
-          isFinished={isFinished} 
-          toggleTimer={toggleTimer} 
-          resetTimer={resetTimer} 
-          currentMode={currentMode} 
-          globalStyles={globalStyles} 
+        <TimerControls
+          isActive={isActive}
+          isFinished={isFinished}
+          toggleTimer={toggleTimer}
+          resetTimer={resetTimer}
+          currentMode={currentMode}
+          globalStyles={globalStyles}
         />
 
-        <WhiteNoiseControls 
-          globalStyles={globalStyles} 
-          isDark={isDark} 
+        <WhiteNoiseControls
+          globalStyles={globalStyles}
+          isDark={isDark}
         />
 
         <div className={`mt-6 text-sm font-medium transition-opacity duration-300 ${isFinished ? `opacity-100 animate-bounce ${currentMode.finishedPulse}` : 'opacity-0'}`}>
@@ -213,7 +236,7 @@ export default function App() {
 
       </div>
 
-      <SettingsModal 
+      <SettingsModal
         showSettings={showSettings}
         setShowSettings={setShowSettings}
         isDark={isDark}
