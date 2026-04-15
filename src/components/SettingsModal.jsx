@@ -27,18 +27,33 @@ export function SettingsModal({
         </div>
 
         <div className="space-y-6">
-          {/* Themes dropdown */}
+          {/* Themes selection */}
           <div>
-            <h3 className={`text-sm font-semibold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Color Schema</h3>
-            <select
-              value={tempColorPreset}
-              onChange={(e) => setTempColorPreset(e.target.value)}
-              className={`w-full p-3 rounded-xl border-none focus:ring-2 focus:ring-blue-500 outline-none transition-colors appearance-none font-medium ${globalStyles.modalInput}`}
-            >
-              {Object.entries(COLOR_SCHEMAS).map(([key, schemaData]) => (
-                <option key={key} value={key}>{schemaData.name}</option>
-              ))}
-            </select>
+            <h3 className={`text-sm font-extrabold uppercase tracking-wider mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Color Schema</h3>
+            <div className="grid grid-cols-1 gap-2">
+              {Object.entries(COLOR_SCHEMAS).map(([key, schemaData]) => {
+                const getDotClass = (mode) => schemaData[mode].light.btn.split(' ')[0];
+                const isSelected = tempColorPreset === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setTempColorPreset(key)}
+                    className={`flex items-center justify-between w-full p-3 text-left rounded-xl border-2 transition-all outline-none ${
+                        isSelected 
+                          ? (isDark ? 'border-gray-500 bg-zinc-800' : 'border-gray-900 bg-gray-100') 
+                          : (isDark ? 'border-transparent bg-zinc-800/40 hover:bg-zinc-800' : 'border-transparent bg-gray-100/50 hover:bg-gray-200')
+                    }`}
+                  >
+                    <span className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{schemaData.name}</span>
+                    <div className="flex space-x-1.5">
+                      <div className={`w-4 h-4 rounded-full shadow-sm ${getDotClass('focus')}`} />
+                      <div className={`w-4 h-4 rounded-full shadow-sm ${getDotClass('shortBreak')}`} />
+                      <div className={`w-4 h-4 rounded-full shadow-sm ${getDotClass('longBreak')}`} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Durations */}
