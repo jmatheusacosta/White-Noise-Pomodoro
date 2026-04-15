@@ -11,40 +11,138 @@ export function WhiteNoiseControls({ globalStyles, isDark }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [soundType, setSoundType] = useState('estatico');
-  const audioRef = useRef(null);
+  
+  // Web Audio Context refs for gapless playback
+  const audioCtxRef = useRef(null);
+  const gainNodeRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+  const audioBuffersRef = useRef({}); // Cache for downloaded audio files
+  
+  const currentSoundTypeRef = useRef(soundType);
+  const isPlayingRef = useRef(isPlaying);
 
+  // Update refs to avoid stale closures during async fetch calls
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
-  useEffect(() => {
-    if (audioRef.current && isPlaying) {
-      audioRef.current.play().catch(e => console.error("Playback failed", e));
-    }
+    currentSoundTypeRef.current = soundType;
   }, [soundType]);
 
   useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(e => console.error("Playback failed", e));
-      } else {
-        audioRef.current.pause();
-      }
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  // Initialize AudioContext
+  const initAudioCtx = () => {
+    if (!audioCtxRef.current) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtxRef.current = new AudioContext();
+      
+      gainNodeRef.current = audioCtxRef.current.createGain();
+      // Use linear ramping for a smoother volume initialization if possible, 
+      // but value setting is fine for initialization
+      gainNodeRef.current.gain.value = volume;
+      gainNodeRef.current.connect(audioCtxRef.current.destination);
+    }
+  };
+
+  // Fetch and decode audio buffer
+  const loadAudioBuffer = async (url) => {
+    if (audioBuffersRef.current[url]) {
+      return audioBuffersRef.current[url];
+    }
+    try {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const decodedBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+      audioBuffersRef.current[url] = decodedBuffer;
+      return decodedBuffer;
+    } catch (e) {
+      console.error("Error loading audio buffer for gapless playback:", e);
+      return null;
+    }
+  };
+
+  const playBuffer = async (type) => {
+    initAudioCtx();
+    
+    if (audioCtxRef.current.state === 'suspended') {
+      await audioCtxRef.current.resume();
+    }
+
+    const buffer = await loadAudioBuffer(SOUNDS[type].url);
+    if (!buffer) return;
+
+    // Check if the user paused or changed sound type while we were fetching
+    if (!isPlayingRef.current || currentSoundTypeRef.current !== type) return;
+
+    // Stop currently playing source if there is one
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.stop();
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+
+    // Create new source for gapless playback
+    const source = audioCtxRef.current.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true; // This handles PERFECT gapless looping natively!
+    source.connect(gainNodeRef.current);
+    source.start(0);
+    sourceNodeRef.current = source;
+  };
+
+  const stopBuffer = () => {
+    if (sourceNodeRef.current) {
+      sourceNodeRef.current.stop();
+      sourceNodeRef.current.disconnect();
+      sourceNodeRef.current = null;
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state === 'running') {
+      audioCtxRef.current.suspend();
+    }
+  };
+
+  // Handle Play/Pause
+  useEffect(() => {
+    if (isPlaying) {
+      playBuffer(soundType);
+    } else {
+      stopBuffer();
     }
   }, [isPlaying]);
+
+  // Handle Sound Type Change while playing
+  useEffect(() => {
+    if (isPlaying) {
+      playBuffer(soundType);
+    }
+  }, [soundType]);
+
+  // Handle Volume without popping
+  useEffect(() => {
+    if (gainNodeRef.current && audioCtxRef.current) {
+      // Smooth volume transition to prevent clicking sounds
+      gainNodeRef.current.gain.setTargetAtTime(volume, audioCtxRef.current.currentTime, 0.1);
+    }
+  }, [volume]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (sourceNodeRef.current) {
+        sourceNodeRef.current.stop();
+        sourceNodeRef.current.disconnect();
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(console.error);
+      }
+    };
+  }, []);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
 
   return (
     <div className={`mt-8 w-full flex flex-col items-center gap-3 p-4 rounded-2xl border transition-colors duration-300 ${isDark ? 'bg-black/20 border-white/5' : 'bg-black/5 border-black/5'}`}>
-      <audio
-        ref={audioRef}
-        src={SOUNDS[soundType].url}
-        loop
-      />
-
+      
       <div className="flex w-full items-center justify-between gap-2">
         <select
           value={soundType}
